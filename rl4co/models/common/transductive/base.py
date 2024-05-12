@@ -59,7 +59,7 @@ class TransductiveModel(RL4COLitModule, metaclass=abc.ABCMeta):
             setattr(self, f"{split}_batch_size", self.hparams.batch_size)
 
         # Setup loggers
-        self.setup_loggers()
+        # self.setup_loggers()
 
     def on_train_batch_start(self, batch: Any, batch_idx: int):
         """Called before training (i.e. search) for a new batch begins.

@@ -151,7 +151,7 @@ class RL4COLitModule(LightningModule, metaclass=abc.ABCMeta):
             self.data_cfg["test_data_size"], phase="test"
         )
         self.dataloader_names = None
-        self.setup_loggers()
+        # self.setup_loggers()
         self.post_setup_hook()
 
     def setup_loggers(self):
