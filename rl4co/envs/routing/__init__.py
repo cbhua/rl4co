@@ -24,3 +24,5 @@ from rl4co.envs.routing.svrp.generator import SVRPGenerator
 from rl4co.envs.routing.tsp.generator import TSPGenerator
 from rl4co.envs.routing.mdcpdp.generator import MDCPDPGenerator
 
+from rl4co.envs.routing.mdcpdp.env import MDCPDPEnv
+from rl4co.envs.routing.shpp.env import SHPPEnv
