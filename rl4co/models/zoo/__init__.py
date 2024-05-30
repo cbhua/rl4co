@@ -13,9 +13,11 @@ from rl4co.models.zoo.ham import (
 from rl4co.models.zoo.hetgnn import HetGNNModel
 from rl4co.models.zoo.matnet import MatNet, MatNetPolicy
 from rl4co.models.zoo.mdam import MDAM, MDAMPolicy
+from rl4co.models.zoo.n2s import N2S, N2SPolicy
 from rl4co.models.zoo.nargnn import NARGNNPolicy
 from rl4co.models.zoo.pomo import POMO
 from rl4co.models.zoo.ptrnet import PointerNetwork, PointerNetworkPolicy
 from rl4co.models.zoo.symnco import SymNCO, SymNCOPolicy
+from rl4co.models.zoo.mvmoe import MVMoE_POMO, MVMoE_AM
 from rl4co.models.zoo.glop import GLOP, GLOPPolicy
 from rl4co.models.zoo.glop_ori import GLOPOri, GLOPOriPolicy
