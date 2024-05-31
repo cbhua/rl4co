@@ -114,8 +114,8 @@ class GLOPOriPolicy(NonAutoregressivePolicy):
             td [bs]: NOTE: different with our partition, this doesn't to be sampled
             actions [bs*n_samples, seq_len]
         Returns:
-            tsp_insts_list [bs]: list of tsp instances, each has the size of [sum_tsps, max_tsp_len, 2]
-            n_tsps_per_route_list [bs]: list of number of tsps per route, each element is a list[int]
+            tsp_insts_list [bs]: list of tsp instances, each has the size of [sum_num_tsps_of_samples, max_tsp_len, 2]
+            n_tsps_per_route_list [bs[n_samples]]: list of number of tsps per route, each element is a list[int]
         """
         from GLOP.heatmap.cvrp.inst import trans_tsp
 
