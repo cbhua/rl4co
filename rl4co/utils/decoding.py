@@ -571,3 +571,94 @@ class BeamSearch(DecodingStrategy):
         self.beam_path.append(beam_parent)
 
         return selected, batch_beam_idx
+
+class MaxLength(DecodingStrategy):
+    name = "max_length"
+
+    def __init__(
+        self,
+        temperature: float = 1.0,
+        top_p: float = 0.0,
+        top_k: int = 0,
+        mask_logits: bool = True,
+        tanh_clipping: float = 0,
+        multistart: bool = False,
+        num_starts: Optional[int] = None,
+        select_start_nodes_fn: Optional[callable] = None,
+        improvement_method_mode: bool = False,
+        select_best: bool = False,
+        store_all_logp: bool = False,
+        max_len: int = 10,
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            mask_logits=mask_logits,
+            tanh_clipping=tanh_clipping,
+            multistart=multistart,
+            num_starts=num_starts,
+            select_start_nodes_fn=select_start_nodes_fn,
+            improvement_method_mode=improvement_method_mode,
+            select_best=select_best,
+            store_all_logp=store_all_logp,
+            **kwargs,
+        )
+        self.max_len = max_len
+
+    def pre_decoder_hook(
+        self, td: TensorDict, env: RL4COEnvBase, action: torch.Tensor = None
+    ):
+        td, env, self.num_starts = super().pre_decoder_hook(td, env, action)
+        self.curr_seq_len = torch.zeros(td.batch_size, device=td.device)
+        return td, env, self.num_starts
+
+    def step(
+        self,
+        logits: torch.Tensor,
+        mask: torch.Tensor,
+        td: TensorDict = None,
+        action: torch.Tensor = None,
+        **kwargs,
+    ) -> TensorDict:
+        """Main decoding operation. This method should be called in a loop until all sequences are done.
+
+        Args:
+            logits: Logits from the model.
+            mask: Action mask. 1 if feasible, 0 otherwise (so we keep if 1 as done in PyTorch).
+            td: TensorDict containing the current state of the environment.
+            action: Optional action to use, e.g. for evaluating log probabilities.
+        """
+        if not self.mask_logits:  # set mask_logit to None if mask_logits is False
+            mask = None
+
+        logprobs = process_logits(
+            logits,
+            mask,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
+            tanh_clipping=self.tanh_clipping,
+            mask_logits=self.mask_logits,
+        )
+        logprobs, selected_action, td = self._step(
+            logprobs, mask, td, action=action, **kwargs
+        )
+
+        # If the current subsequence length is equal to the maximum length, force to 
+        # select the depot
+        # NOTE: set the log_p of the depot to 1, or force to select the depot with the current probability
+        self.curr_seq_len += selected_action.ne(0).int()
+        selected_action = torch.where(self.curr_seq_len > self.max_len, torch.tensor(0, device=td.device), selected_action)
+
+        # directly return for improvement methods, since the action for improvement methods is finalized in its own policy
+        if self.improvement_method_mode:
+            return logprobs, selected_action
+        # for others
+        if not self.store_all_logp:
+            logprobs = gather_by_index(logprobs, selected_action, dim=1)
+        td.set("action", selected_action)
+        self.actions.append(selected_action)
+        self.logprobs.append(logprobs)
+        return td
