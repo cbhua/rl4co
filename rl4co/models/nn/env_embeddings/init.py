@@ -153,6 +153,45 @@ class VRPInitEmbedding(nn.Module):
         return out
 
 
+class VRPPolarInitEmbedding(nn.Module):
+    """Initial embedding for the Vehicle Routing Problems (VRP).
+    Embed the following node features to the embedding space:
+        - locs: x, y coordinates of the nodes (depot and customers separately)
+        - demand: demand of the customers
+    """
+
+    def __init__(self, embed_dim, linear_bias=True, node_dim: int = 3, k_sparse: int = 3):
+        super(VRPInitEmbedding, self).__init__()
+        node_dim = node_dim  # 3: x, y, demand
+        self.init_embed = nn.Linear(node_dim, embed_dim, linear_bias)
+        self.init_embed_depot = nn.Linear(2, embed_dim, linear_bias)  # depot embedding
+        self.k_sparse = k_sparse
+
+    def forward(self, td):
+        locs = td["locs"]
+        shift_locs = locs - locs[:, 0:1, :]
+        _x, _y = shift_locs[:, :, 0], shift_locs[:, :, 1]
+        r = torch.sqrt(_x ** 2 + _y ** 2)
+        theta = torch.atan2(_y, _x)
+        x = torch.stack((td["demand"], r, theta), dim=-1).transpose(1, 0)
+
+        # [batch, 1, 2]-> [batch, 1, embed_dim]
+        depot, cities = x[:, :1, :], x[:, 1:, :]
+
+        depot_embedding = self.init_embed_depot(depot)
+        node_embeddings = self.init_embed(cities)
+
+        out = torch.cat((depot_embedding, node_embeddings), -2)
+        return out
+
+    def gen_cos_sim_matrix(self, shift_coors):
+        dot_products = torch.mm(shift_coors, shift_coors.t())
+        magnitudes = torch.sqrt(torch.sum(shift_coors ** 2, dim=1)).unsqueeze(1)
+        magnitude_matrix = torch.mm(magnitudes, magnitudes.t()) + 1e-10
+        cosine_similarity_matrix = dot_products / magnitude_matrix
+        return cosine_similarity_matrix
+
+
 class VRPTWInitEmbedding(VRPInitEmbedding):
     def __init__(self, embed_dim, linear_bias=True, node_dim: int = 6):
         # node_dim = 6: x, y, demand, tw start, tw end, service time
